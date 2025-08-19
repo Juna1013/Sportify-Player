@@ -1,58 +1,85 @@
 "use client";
-import { useState } from "react"; // インポート修正
+import { useState, useEffect } from "react";
+
+// Spotify Track型
+interface Artist {
+    id: string;
+    name: string;
+}
 
 interface Track {
     id: string;
-    name: string;
+    name:string;
     uri: string;
-    artists: { name: string }[];
+    artists: Artist[];
+    duration_ms: number;
+}
+
+interface CurrentTrackResponse {
+    item: Track | null;
+    is_playing: boolean;
+    progress_ms: number;
 }
 
 export default function Player() {
-    const [query, setQuery] = useState("");
+    const [query, setQuery] = useState<string>("");
     const [tracks, setTracks] = useState<Track[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+    const [isPlaying, setIsPlaying] = useState<boolean>(false);
+    const [progress, setProgress] = useState<number>(0);
 
+    // 曲検索
     const search = async () => {
-        if (!query.trim()) return;
-        
-        setLoading(true);
-        setError(null);
-        
-        try {
-            const res = await fetch("/api/search?q=" + encodeURIComponent(query));
-            const data = await res.json();
-            
-            if (!res.ok) {
-                throw new Error(data.error || 'Search failed');
-            }
-            
-            setTracks(data.tracks?.items || []);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Search failed');
-            setTracks([]);
-        } finally {
-            setLoading(false);
+        const res = await fetch("/api/search?q=" + query);
+        const data = await res.json();
+        setTracks(data.tracks.items as Track[]);
+    };
+
+    // 再生
+    const play = async (uri: string) => {
+        await fetch("/api/play", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uri }),
+        });
+        updateCurrentTrack();
+    };
+
+    // 再生中の曲情報取得
+    const updateCurrentTrack = async () => {
+        const res = await fetch("/api/current");
+        const data: CurrentTrackResponse = await res.json();
+        if (data.item) {
+            setCurrentTrack(data.item);
+            setIsPlaying(data.is_playing);
+            setProgress(data.progress_ms / data.item.duration_ms);
         }
     };
 
-    const play = async (uri: string) => {
-        try {
-            const response = await fetch("/api/play", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" }, // タイポ修正
-                body: JSON.stringify({ uri }),
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Play failed');
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Play failed');
-        }
+    // 再生 / 一時停止
+    const togglePlay = async () => {
+        const api = isPlaying ? "/api/pause" : "/api/resume";
+        await fetch(api, { method: "POST" });
+        updateCurrentTrack();
+    }
+
+    // 次の曲
+    const next = async () => {
+        await fetch("/api/next", { method: "POST" });
+        updateCurrentTrack();
     };
+
+    // 前の曲
+    const previous = async () => {
+        await fetch("/api/previous", { method: "POST" });
+        updateCurrentTrack();
+    };
+
+    // 1秒ごとに進行状況更新
+    useEffect(() => {
+        const interval = setInterval(updateCurrentTrack, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="p-4 space-y-4">
