@@ -89,27 +89,24 @@ export default function Player() {
                     placeholder="曲を検索"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && search()}
                 />
                 <button 
                     onClick={search} 
-                    disabled={loading}
                     className="bg-green-500 text-white px-4 py-2 rounded disabled:opacity-50"
                 >
-                    {loading ? "検索中..." : "検索"}
+                    検索
                 </button>
             </div>
             
-            {error && (
-                <div className="text-red-500 p-2 border border-red-300 rounded bg-red-50">
-                    {error}
-                </div>
-            )}
-            
             <ul className="space-y-2">
                 {tracks.map((track) => (
-                    <li key={track.id} className="flex justify-between items-center p-2 border rounded">
-                        <span>{track.name} - {track.artists[0]?.name}</span>
+                    <li 
+                        key={track.id}
+                        className="flex justify-between items-center p-2 border rounded"
+                    >
+                        <span>
+                            {track.name} - {track.artists[0]?.name}
+                        </span>
                         <button 
                             onClick={() => play(track.uri)} 
                             className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
@@ -119,6 +116,36 @@ export default function Player() {
                     </li>
                 ))}
             </ul>
+
+            {currentTrack && (
+                <div className="mt-6 p-4 border rounded bg-white space-y-2">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="font-bold">{currentTrack.name}</p>
+                            <p className="text-sm">
+                                {currentTrack.artists.map((a) => a.name).join(", ")}
+                            </p>
+                        </div>
+                        <div className="flex space-x-2">
+                            <button onClick={previous} className="px-2 py-1 border rounded">
+                                ⏮
+                            </button>
+                            <button onClick={togglePlay} className="px-2 py-1 border rounded">
+                                {isPlaying ? "⏸" : "▶"}
+                            </button>
+                            <button onClick={next} className="px-2 py-1 border rounded">
+                                ⏭
+                            </button>
+                        </div>
+                    </div>
+                <div className="w-full h-2 bg-gray-200 rounded">
+                    <div
+                        className="h-2 bg-green-500 rounded"
+                        style={{ width: `${progress * 100}%` }}
+                    ></div>
+                </div>
+            </div>
+            )}
         </div>
     );
 }
